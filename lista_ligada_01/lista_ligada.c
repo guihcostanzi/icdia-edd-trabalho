@@ -57,12 +57,22 @@ PONT buscaSeqExc(LISTA* l, TIPOCHAVE ch, PONT* ant) {
   return NULL;
 }
 
+// Alterando essa função para ter a dupla ligação funcional
 bool excluirElemLista(LISTA* l, TIPOCHAVE ch) {
   PONT ant, i;
   i = buscaSeqExc(l, ch, &ant);
   if (i == NULL) return false;
-  if (ant == NULL) l->inicio = i->prox;
-  else ant->prox = i->prox;
+
+  // Mudanças na lógica 
+
+  if (ant == NULL) {
+    l->inicio = i->prox;
+    i->prox->ant = NULL;
+  }
+  else {
+    ant->prox = i->prox;
+    i->prox->ant = i->ant;
+  }
   free(i);
   return true;
 }
@@ -77,6 +87,7 @@ void reinicializarLista(LISTA* l) {
   l->inicio = NULL;
 }
 
+// Edição feita nesta função para comportar a mudança para lista duplamente ligada
 bool inserirElemListaOrd(LISTA* l, REGISTRO reg) {
   TIPOCHAVE ch = reg.chave;
   PONT ant, i;
@@ -84,13 +95,18 @@ bool inserirElemListaOrd(LISTA* l, REGISTRO reg) {
   if (i != NULL) return false;
   i = (PONT)malloc(sizeof(ELEMENTO));
   i->reg = reg;
+
+  // Mudanças na lógica 
   if (ant == NULL) {
     i->prox = l->inicio;
+    i->ant = NULL;
     l->inicio = i;
   } else {
     i->prox = ant->prox;
+    i->ant = ant;
     ant->prox = i;
   }
+
   return true;
 }
 
@@ -105,4 +121,26 @@ PONT retornarUltimo(LISTA* l, TIPOCHAVE *ch) {
   while (ultimo->prox != NULL) ultimo = ultimo->prox;
   *ch = ultimo->reg.chave;
   return ultimo;
+}
+
+void imprimirAnteriorEProximo(LISTA* l, TIPOCHAVE ch) {
+    PONT pos = buscaSequencial(l, ch);
+    if (pos == NULL) {
+        printf("Elemento com chave %d não encontrado.\n", ch);
+        return;
+    }
+
+    printf("Elemento encontrado: %d\n", pos->reg.chave);
+
+    if (pos->ant != NULL) {
+        printf("Anterior: %d\n", pos->ant->reg.chave);
+    } else {
+        printf("Anterior: NULL\n");
+    }
+
+    if (pos->prox != NULL) {
+        printf("Próximo: %d\n", pos->prox->reg.chave);
+    } else {
+        printf("Próximo: NULL\n");
+    }
 }
