@@ -1,14 +1,9 @@
-/******************************************************************************
-//     filaDinamica.c
-// Este programa gerencia filas lineares ligadas (implementacao dinamica).
-// As filas gerenciadas podem ter um numero arbitrario de elementos.
-// Não usaremos sentinela ou cabeça nesta estrutura.
-******************************************************************************/
 #include <stdio.h>
-#include <malloc.h>
+#include <stdlib.h>
 #define ERRO -1
 #define true 1
 #define false 0
+
 typedef int bool;
 typedef int TIPOCHAVE;
 
@@ -20,143 +15,126 @@ typedef struct {
 typedef struct aux {
   REGISTRO reg;
   struct aux* prox;
-} ELEMENTO, *PONT;;
+} ELEMENTO, *PONT;
 
 typedef struct {
-  PONT inicio;
-  PONT fim;
+  PONT cabeca; // Aponta para o nó-cabeça
+  PONT fim;    // Aponta para o último elemento válido
 } FILA;
 
-/* Inicialização da fila ligada (a fila jah esta criada e eh apontada 
-pelo endereco em f) */
+/* Inicialização da fila ligada (a fila já está criada e é apontada pelo endereço em f) */
 void inicializarFila(FILA* f){
-  f->inicio = NULL;
-  f->fim = NULL;
+    PONT cabeca = (PONT) malloc(sizeof(ELEMENTO));
+    if (cabeca == NULL) {
+        // Falha na alocação de memória
+        return;
+    }
+    cabeca->reg.chave = ERRO; // Valor indicando que é um nó-cabeça
+    cabeca->prox = NULL;
+    f->cabeca = cabeca;
+    f->fim = cabeca;
 } /* inicializarFila */
 
-/* Retornar o tamanho da fila (numero de elementos) */
+/* Retornar o tamanho da fila (número de elementos válidos) */
 int tamanho(FILA* f) {
-  PONT end = f->inicio;
-  int tam = 0;
-  while (end != NULL){
-    tam++;
-    end = end->prox;
-  }
-  return tam;
+    PONT end = f->cabeca->prox; // Ignora o nó-cabeça
+    int tam = 0;
+    while (end != NULL){
+        tam++;
+        end = end->prox;
+    }
+    return tam;
 } /* tamanho */
 
-/* Retornar o tamanho em bytes da fila. Neste caso, isto depende do numero
-   de elementos que estao sendo usados.   */
+/* Retornar o tamanho em bytes da fila */
 int tamanhoEmBytes(FILA* f) {
-  return (tamanho(f)*sizeof(ELEMENTO)) + sizeof(FILA);
+    return (tamanho(f) * sizeof(ELEMENTO)) + sizeof(FILA);
 } /* tamanhoEmBytes */
 
-/* Destruição da fila 
-   libera a memoria de todos os elementos da fila*/
+/* Destruição da fila - libera a memória de todos os elementos válidos da fila */
 void destruirFila(FILA* f) {
-  PONT end = f->inicio;
-  while (end != NULL){
-    PONT apagar = end;
-    end = end->prox;
-    free(apagar);
-  }
-  f->inicio = NULL;
-  f->fim = NULL;
+    PONT end = f->cabeca->prox; // Ignora o nó-cabeça
+    while (end != NULL){
+        PONT apagar = end;
+        end = end->prox;
+        free(apagar);
+    }
+    f->cabeca->prox = NULL;
+    f->fim = f->cabeca;
 } /* destruirFila */
 
-
-/* retornarPrimeiro - retorna o endereco do primeiro elemento da fila e (caso
-   a fila nao esteja vazia) retorna a chave desse elemento na memoria 
-   apontada pelo ponteiro ch */
+/* retornarPrimeiro - retorna o endereço do primeiro elemento válido da fila e, caso não esteja vazia, retorna a chave desse elemento na memória apontada pelo ponteiro ch */
 PONT retornarPrimeiro(FILA* f, TIPOCHAVE *ch){
-  if (f->inicio != NULL) *ch = f->inicio->reg.chave;
-  return f->inicio;
+    if (f->cabeca->prox != NULL) {
+        *ch = f->cabeca->prox->reg.chave;
+        return f->cabeca->prox;
+    }
+    return NULL;
 } /* retornarPrimeiro */
 
-/* retornarUltimo - retorna o endereco do ultimo elemento da fila e (caso
-   a fila nao esteja vazia) retorna a chave desse elemento na memoria 
-   apontada pelo ponteiro ch */
+/* retornarUltimo - retorna o endereço do último elemento válido da fila e, caso não esteja vazia, retorna a chave desse elemento na memória apontada pelo ponteiro ch */
 PONT retornarUltimo(FILA* f, TIPOCHAVE* ch){
-  if (f->inicio == NULL) return NULL;
-  *ch = f->fim->reg.chave;
-  return f->fim;
+    if (f->fim != f->cabeca) { // Verifica se há elementos válidos além do nó-cabeça
+        *ch = f->fim->reg.chave;
+        return f->fim;
+    }
+    return NULL;
 } /* retornarUltimo */
 
-
 /* Inserção no fim da fila */
-bool inserirNaFila(FILA* f,REGISTRO reg) {
-  PONT novo = (PONT) malloc(sizeof(ELEMENTO));
-  novo->reg = reg;
-  novo->prox = NULL;
-  if (f->inicio==NULL){
-     f->inicio = novo;
-  }else{
-     f->fim->prox = novo;
-  }
-  f->fim = novo;
-  return true;
-} /* inserir */
+bool inserirNaFila(FILA* f, REGISTRO reg) {
+    PONT novo = (PONT) malloc(sizeof(ELEMENTO));
+    if (novo == NULL) {
+        return false;
+    }
+    novo->reg = reg;
+    novo->prox = NULL;
 
-/* Excluir  */
+    if (f->cabeca->prox == NULL) {
+        // A fila está vazia (após o nó-cabeça), o novo elemento se torna o início e o fim
+        f->cabeca->prox = novo;
+        f->fim = novo;
+    } else {
+        f->fim->prox = novo;
+        f->fim = novo;
+    }
+    return true;
+} /* inserirNaFila */
+
+/* Exclusão do início da fila */
 bool excluirDaFila(FILA* f, REGISTRO* reg) {
-  if (f->inicio==NULL){
-    return false;                     
-  }
-  *reg = f->inicio->reg;
-  PONT apagar = f->inicio;
-  f->inicio = f->inicio->prox;
-  free(apagar);
-  if (f->inicio == NULL){
-    f->fim = NULL;
-  }
-  return true;
+    if (f->cabeca->prox == NULL) {
+        return false; // A fila está vazia (após o nó-cabeça)
+    }
+    
+    *reg = f->cabeca->prox->reg;
+    PONT apagar = f->cabeca->prox;
+    f->cabeca->prox = apagar->prox;
+    free(apagar);
+
+    if (f->cabeca->prox == NULL) {
+        f->fim = f->cabeca;
+    }
+    return true;
 } /* excluirDaFila */
 
-
-/* Exibição da fila sequencial */
+/* Exibição da fila sequencial, ignorando o nó-cabeça */
 void exibirFila(FILA* f){
-  PONT end = f->inicio;
-  printf("Fila: \" ");
-  while (end != NULL){
-    printf("%d ", end->reg.chave); // soh lembrando TIPOCHAVE = int
-    end = end->prox;
-  }
-  printf("\"\n");
-} /* exibirFila */ 
+    PONT end = f->cabeca->prox; // Ignora o nó-cabeça
+    printf("Fila: \"");
+    while (end != NULL){
+        printf("%d ", end->reg.chave);
+        end = end->prox;
+    }
+    printf("\"\n");
+} /* exibirFila */
 
-/* Busca sequencial */
-PONT buscaSeq(FILA* f,TIPOCHAVE ch){
-  PONT pos = f->inicio;
-  while (pos != NULL){
-    if (pos->reg.chave == ch) return pos;
-    pos = pos->prox;
-  }
-  return NULL;
+/* Busca sequencial, ignorando o nó-cabeça */
+PONT buscaSeq(FILA* f, TIPOCHAVE ch){
+    PONT pos = f->cabeca->prox; // Ignora o nó-cabeça
+    while (pos != NULL){
+        if (pos->reg.chave == ch) return pos;
+        pos = pos->prox;
+    }
+    return NULL;
 } /* buscaSeq */
-
-/* Busca sequencial com sentinela alocado dinamicamente */
-PONT buscaSeqSent1(FILA* f,TIPOCHAVE ch){
-  if (!f->inicio) return NULL;
-  PONT sentinela = malloc(sizeof(ELEMENTO));
-  sentinela->reg.chave = ch;
-  f->fim->prox = sentinela;
-  PONT pos = f->inicio;
-  while (pos->reg.chave != ch) pos = pos->prox;
-  free(sentinela);
-  f->fim->prox = NULL;
-  if (pos!=sentinela) return pos;
-  return NULL;
-} /* buscaSeqSent1 */
-
-/* Busca sequencial com sentinela como variavel local */
-PONT buscaSeqSent2(FILA* f,TIPOCHAVE ch){
-  if (!f->inicio) return NULL;
-  ELEMENTO sentinela;
-  sentinela.reg.chave = ch;
-  f->fim->prox = &sentinela;
-  PONT pos = f->inicio;
-  while (pos->reg.chave != ch) pos = pos->prox;
-  f->fim->prox = NULL;
-  if (pos!=&sentinela) return pos;
-  return NULL;
-} /* buscaSeqSent1 */
